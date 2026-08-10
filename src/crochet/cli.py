@@ -14,6 +14,10 @@
 
 from argparse import ArgumentParser
 
+import stim
+
+from crochet.utilities import partition_qubits
+
 parser = ArgumentParser(
     prog="crochet",
     description="A tool to visualize the schedules of a STIM stabilizer circuit for QEC.",
@@ -22,4 +26,13 @@ parser.add_argument("filepath", help="path to a *.stim file")
 
 
 def main():
-    parser.parse_args()
+    args = parser.parse_args()
+
+    circuit = stim.Circuit.from_file(args.filepath)
+    dqubits, aqubits = partition_qubits(circuit)
+
+    print(f"Loaded circuit : {args.filepath}")
+    print(f"> Data qubits : {len(dqubits)}")
+    print(f"> Ancillaries : {len(aqubits)}")
+
+    # print(f"> Rounds : {find_rounds(circuit)}")
