@@ -1,0 +1,19 @@
+[project]
+name = "crochet"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "stim>=1.16.0",
+    "termcolor>=3.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.1",
+]
+
+[project.scripts]
+crochet = "crochet.cli:main"
+
+[tool.uv]
+package = true
