@@ -1,3 +1,7 @@
+[build-system]
+requires = ["uv_build >=0.12.1, <0.13.0"]
+build-backend = "uv_build"
+
 [project]
 name = "crochet"
 version = "0.1.0"
@@ -15,6 +19,3 @@ dev = [
 
 [project.scripts]
 crochet = "crochet.cli:main"
-
-[tool.uv]
-package = true
