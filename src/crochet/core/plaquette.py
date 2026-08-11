@@ -24,18 +24,12 @@ console = logging.getLogger(__name__)
 
 
 class Plaquette:
-    def __init__(
-        self, start: int, basis: PauliBasis, location: list[float], size: int = 1
-    ):
+    def __init__(self, start: int, basis: PauliBasis, location: list[float]):
         self.__start: Moment = start
         self.__location: list[float] = location
         self.__interactions: dict[tuple[float, float], Moment] = {}
         self.__preparation = basis
         self.__stabilizer_type = PauliBasis.U
-        if size == 1:
-            self.__corners = [(-0.5, -0.5), (+0.5, -0.5), (-0.5, +0.5), (+0.5, +0.5)]
-        elif size == 2:
-            self.__corners = []
 
     @property
     def start(self):
@@ -48,6 +42,10 @@ class Plaquette:
     @property
     def basis(self):
         return self.__preparation
+
+    @property
+    def corners(self):
+        return self.__interactions.keys()
 
     @property
     def interactions(self):
@@ -81,7 +79,7 @@ class Plaquette:
     @property
     def schedule(self) -> tuple[int, ...]:
         schedule = []
-        for c in self.__corners:
+        for c in [(-0.5, -0.5), (+0.5, -0.5), (-0.5, +0.5), (+0.5, +0.5)]:
             schedule.append(self.__interactions.get(c, -1))
         return tuple(schedule)
 

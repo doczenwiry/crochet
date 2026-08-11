@@ -11,7 +11,7 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
+import math
 from typing import ClassVar
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -29,19 +29,47 @@ class Drawer:
         PauliBasis.Z: "#4040CF",
     }
 
+    # Thanks, Claude.AI (August 2026)
     @staticmethod
-    def __make_shape(position):
-        x, y = position
+    def __theta(dx: float, dy: float) -> float:
+        adx, ady = abs(dx), abs(dy)
+
+        angle: float
+        if adx > ady:
+            angle = (ady / adx) * math.pi / 4.0
+        else:
+            angle = (math.pi / 2.0) - (adx / ady) * (math.pi / 4.0)
+
+        if dx < 0:
+            angle = math.pi - angle
+        if dy < 0:
+            angle = 2.0 * math.pi - angle
+
+        return angle
+
+    @staticmethod
+    def __make_shape(plaquette: Plaquette):
+        x, y = plaquette.location
         return [
             ((x + dx) * Drawer.__UNIT, (y + dy) * Drawer.__UNIT)
-            for dx, dy in [(-0.5, -0.5), (+0.5, -0.5), (+0.5, +0.5), (-0.5, +0.5)]
+            for _, dx, dy in sorted(
+                (Drawer.__theta(dx, dy), dx, dy) for dx, dy in plaquette.corners
+            )
         ]
 
     @staticmethod
-    def __make_chord(position, base_shape, scale):
-        x, y = position
-        x0, y0, x1, y1 = base_shape
-        return [(x0 + x) * scale, (y0 + y) * scale, (x1 + x) * scale, (y1 + y) * scale]
+    def __make_chord(plaquette: Plaquette):
+        x, y = plaquette.location
+        (x0, y0), (x1, y1) = plaquette.corners
+
+        if x0 == x1:
+            points = [x + x0 - 0.5, y + y0, x + x0 + 0.5, y + y1]
+            start, final = (270, 90) if x0 < 0 else (90, 270)
+        else:  # y0 == y1
+            points = [x + x0, y + y0 - 0.5, x + x1, y + y0 + 0.5]
+            start, final = (0, 180) if y0 < 0 else (180, 0)
+
+        return [p * Drawer.__UNIT for p in points], start, final
 
     @staticmethod
     def draw(
@@ -59,21 +87,23 @@ class Drawer:
         earliest = min(stabilizers.values(), key=lambda plq: plq.start)
 
         for plaquette in stabilizers.values():
-            if len(plaquette.interactions) == 0:
+            if len(plaquette.interactions) < 2:
                 continue
 
-            drawer.polygon(
-                Drawer.__make_shape(plaquette.location),
-                fill=Drawer.__COLORS[plaquette.stabilizer_type],
-                outline="black",
-                width=3,
-            )
+            color = Drawer.__COLORS[plaquette.stabilizer_type]
+
+            if len(plaquette.interactions) == 2:
+                points, start, final = Drawer.__make_chord(plaquette)
+                drawer.chord(
+                    points, start=start, end=final, fill=color, outline="black", width=3
+                )
+            else:  # len(plaquette.interactions) >= 3
+                drawer.polygon(
+                    Drawer.__make_shape(plaquette), fill=color, outline="black", width=3
+                )
 
             px, py = plaquette.location
-            for corner in [(-0.5, -0.5), (+0.5, -0.5), (+0.5, +0.5), (-0.5, +0.5)]:
-                if corner not in plaquette.interactions:
-                    continue
-
+            for corner in plaquette.corners:
                 moment = plaquette.interactions[corner]
                 cx, cy = corner
                 drawer.text(
