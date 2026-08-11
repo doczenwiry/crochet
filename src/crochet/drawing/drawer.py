@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import math
+from collections import Counter, defaultdict
 from typing import ClassVar
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -21,7 +22,9 @@ from crochet.core.plaquette import Plaquette
 
 
 class Drawer:
+    __FONT = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", size=16, index=1)
     __UNIT = 64
+    __RADIUS = 0.3125
     __COLORS: ClassVar[dict[PauliBasis, str]] = {
         PauliBasis.U: "lightgray",
         PauliBasis.X: "#CF4040",
@@ -80,16 +83,15 @@ class Drawer:
         rows: int,
         cols: int,
         stabilizers: dict[Qubit, Plaquette],
+        qubit_at_location: dict[tuple[float, float], Qubit],
         savefile: str | None = None,
     ):
         image = Image.new("RGB", (cols * Drawer.__UNIT, rows * Drawer.__UNIT), "gray")
         drawer = ImageDraw.Draw(image)
-        font = ImageFont.truetype(
-            "/System/Library/Fonts/Supplemental/Arial Bold.ttf", size=32
-        )
 
         earliest = min(stabilizers.values(), key=lambda plq: plq.start)
 
+        touched: dict[tuple[float, float], Counter] = defaultdict(Counter)
         for plaquette in stabilizers.values():
             if len(plaquette.interactions) < 2:
                 continue
@@ -98,32 +100,90 @@ class Drawer:
 
             if len(plaquette.interactions) == 2:
                 points, start, final = Drawer.__make_chord(plaquette)
-                drawer.chord(
-                    points,
-                    start=start,
-                    end=final,
-                    fill=color,  # outline="black", width=3
-                )
+                drawer.chord(xy=points, start=start, end=final, fill=color)
             else:  # len(plaquette.interactions) >= 3
-                drawer.polygon(
-                    Drawer.__make_shape(plaquette),
-                    fill=color,  # outline="black", width=3
-                )
+                drawer.polygon(Drawer.__make_shape(plaquette), fill=color)
 
+            px, py = plaquette.location
+            for (dx, dy), moment in plaquette.interactions.items():
+                qubit = px + dx, py + dy
+                touched[qubit][moment] += 1
+
+        for (qx, qy), counter in touched.items():
+            if any(count > 1 for _, count in counter.items()):
+                radius = Drawer.__RADIUS
+                bounding = [
+                    pos * Drawer.__UNIT
+                    for pos in [qx - radius, qy - radius, qx + radius, qy + radius]
+                ]
+                drawer.ellipse(bounding, fill="#FFFF00")
+
+        for plaquette in stabilizers.values():
             px, py = plaquette.location
             for corner in plaquette.corners:
                 moment = plaquette.interactions[corner]
                 cx, cy = corner
+                position = (
+                    (px + 0.70 * cx) * Drawer.__UNIT,
+                    (py + 0.70 * cy) * Drawer.__UNIT,
+                )
                 drawer.text(
-                    (
-                        (px + 0.65 * cx) * Drawer.__UNIT,
-                        (py + 0.65 * cy) * Drawer.__UNIT,
-                    ),
+                    position,
                     text=str(moment - earliest.start),
                     fill="black",
                     anchor="mm",
-                    font=font,
+                    font=Drawer.__FONT,
                 )
+
+            pschedule = plaquette.schedule
+
+            plaquette_r = stabilizers.get(
+                qubit_at_location.get((px + 1.0, py), -1), None
+            )
+            if plaquette_r:
+                rschedule = plaquette_r.schedule
+
+                if (
+                    pschedule[1] == -1
+                    or pschedule[3] == -1
+                    or rschedule[0] == -1
+                    or rschedule[2] == -1
+                ):
+                    continue
+
+                if (pschedule[1] < rschedule[0]) ^ (pschedule[3] < rschedule[2]):
+                    label_position = ((px + 0.5) * Drawer.__UNIT, py * Drawer.__UNIT)
+                    drawer.text(
+                        label_position,
+                        text="X",
+                        fill="yellow",
+                        anchor="mm",
+                        font=Drawer.__FONT,
+                    )
+
+            plaquette_b = stabilizers.get(
+                qubit_at_location.get((px, py + 1.0), -1), None
+            )
+            if plaquette_b:
+                bschedule = plaquette_b.schedule
+
+                if (
+                    pschedule[2] == -1
+                    or pschedule[3] == -1
+                    or bschedule[0] == -1
+                    or bschedule[1] == -1
+                ):
+                    continue
+
+                if (pschedule[2] < bschedule[0]) ^ (pschedule[3] < bschedule[1]):
+                    label_position = (px * Drawer.__UNIT, (py + 0.5) * Drawer.__UNIT)
+                    drawer.text(
+                        label_position,
+                        text="X",
+                        fill="yellow",
+                        anchor="mm",
+                        font=Drawer.__FONT,
+                    )
 
         image = ImageOps.expand(image, border=Drawer.__UNIT, fill="gray")
 

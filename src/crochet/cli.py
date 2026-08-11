@@ -40,4 +40,8 @@ def main():
     print(f"> Qubits : datas [{len(datas)}], ancillas [{len(ancillas)}]")
 
     all_rounds = Plaquette.decompose(circuit, datas, ancillas)
-    Drawer.draw(*get_bounding_box(circuit), all_rounds[0])
+    qubit_at_location = {
+        (qx, qy): qubit
+        for qubit, (qx, qy) in circuit.get_final_qubit_coordinates().items()
+    }
+    Drawer.draw(*get_bounding_box(circuit), all_rounds[0], qubit_at_location)

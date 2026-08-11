@@ -56,7 +56,7 @@ class Plaquette:
         return self.__stabilizer_type
 
     def interact(
-        self, moment: int, qubit: int, position: list[float], stype: PauliBasis
+        self, moment: int, qubit: int, position: list[float], stabilizer: PauliBasis
     ):
         qpx, qpy = self.__location
         qdx, qdy = position
@@ -67,12 +67,12 @@ class Plaquette:
                 f"Data qubit is accessed twice by Round {qubit} [{self.__location}]."
             )
 
-        if PauliBasis.U != self.__stabilizer_type != stype:
+        if PauliBasis.U != self.__stabilizer_type != stabilizer:
             raise ValueError(
-                f"Plaquette is perform different types of controlled stabilizers [{self.__stabilizer_type}/{stype}]"
+                f"Plaquette is perform different types of controlled stabilizers [{self.__stabilizer_type}/{stabilizer}]"
             )
         else:
-            self.__stabilizer_type = stype
+            self.__stabilizer_type = stabilizer
 
         self.__interactions[location] = moment
 
@@ -149,16 +149,16 @@ class Plaquette:
                         and ctrl == ancilla
                         and trgt == data
                     ):
-                        stabilizer_type = PauliBasis[instruction.name[1]]
+                        stype = PauliBasis[instruction.name[1]]
                     elif (
                         current.basis == PauliBasis.Z
                         and ctrl == data
                         and trgt == ancilla
                         and instruction.name[1] == "X"
                     ):
-                        stabilizer_type = PauliBasis.Z
+                        stype = PauliBasis.Z
                     else:
-                        stabilizer_type = PauliBasis.U
+                        stype = PauliBasis.U
                     # TODO: handle extended stabilizers differently to be able to detect erroneous stabilizers.
                     # explanation = "A stabilizer can use CX(a,d) or CZ(a,d) in the X-basis and CX(d,a) in the Z-basis."
                     # extra = f"basis:{current.basis}, gate:{instruction.name}, qubits:{ctrl}@{qubit_coordinates[ctrl]},{trgt}@{qubit_coordinates[trgt]}"
@@ -168,7 +168,7 @@ class Plaquette:
                         moment=ticks,
                         qubit=data,
                         position=qubit_coordinates[data],
-                        stype=stabilizer_type,
+                        stabilizer=stype,
                     )
 
             if instruction.name == "TICK":
