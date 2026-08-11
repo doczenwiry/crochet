@@ -63,10 +63,14 @@ class Drawer:
         (x0, y0), (x1, y1) = plaquette.corners
 
         if x0 == x1:
-            points = [x + x0 - 0.5, y + y0, x + x0 + 0.5, y + y1]
+            y0, y1 = min(y0, y1), max(y0, y1)
+            side = (y1 - y0) / 2.0
+            points = [x + x0 - side, y + y0, x + x0 + side, y + y1]
             start, final = (270, 90) if x0 < 0 else (90, 270)
         else:  # y0 == y1
-            points = [x + x0, y + y0 - 0.5, x + x1, y + y0 + 0.5]
+            x0, x1 = min(x0, x1), max(x0, x1)
+            side = (x1 - x0) / 2.0
+            points = [x + x0, y + y0 - side, x + x1, y + y0 + side]
             start, final = (0, 180) if y0 < 0 else (180, 0)
 
         return [p * Drawer.__UNIT for p in points], start, final
@@ -81,7 +85,7 @@ class Drawer:
         image = Image.new("RGB", (cols * Drawer.__UNIT, rows * Drawer.__UNIT), "gray")
         drawer = ImageDraw.Draw(image)
         font = ImageFont.truetype(
-            "/System/Library/Fonts/Supplemental/Arial Bold.ttf", size=16
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf", size=32
         )
 
         earliest = min(stabilizers.values(), key=lambda plq: plq.start)
@@ -95,11 +99,15 @@ class Drawer:
             if len(plaquette.interactions) == 2:
                 points, start, final = Drawer.__make_chord(plaquette)
                 drawer.chord(
-                    points, start=start, end=final, fill=color, outline="black", width=3
+                    points,
+                    start=start,
+                    end=final,
+                    fill=color,  # outline="black", width=3
                 )
             else:  # len(plaquette.interactions) >= 3
                 drawer.polygon(
-                    Drawer.__make_shape(plaquette), fill=color, outline="black", width=3
+                    Drawer.__make_shape(plaquette),
+                    fill=color,  # outline="black", width=3
                 )
 
             px, py = plaquette.location

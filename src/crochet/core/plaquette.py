@@ -92,6 +92,8 @@ class Plaquette:
             a: {} for a in ancillas
         }
 
+        current: Plaquette
+
         ticks = 0
         inter_ancilla_interaction_detected = False
         for instruction in circuit.flattened():
@@ -108,6 +110,19 @@ class Plaquette:
                             basis=basis,
                             location=qubit_coordinates[tgt.value],
                         )
+
+            if instruction.name == "H":
+                for tgt in instruction.targets_copy():
+                    if tgt.value in ancillas:
+                        ancilla = tgt.value
+                        start = max(rounds_per_ancilla[ancilla])
+                        current = rounds_per_ancilla[ancilla][start]
+                        if ticks == start + 1:
+                            current.__preparation = (
+                                PauliBasis.X
+                                if current.basis == PauliBasis.Z
+                                else PauliBasis.Z
+                            )
 
             if instruction.name in ["CX", "CZ"]:
                 for fst, snd in instruction.target_groups():
@@ -127,7 +142,7 @@ class Plaquette:
                     ancilla, data = (ctrl, trgt) if ctrl in ancillas else (trgt, ctrl)
 
                     start = max(rounds_per_ancilla[ancilla])
-                    current: Plaquette = rounds_per_ancilla[ancilla][start]
+                    current = rounds_per_ancilla[ancilla][start]
 
                     if (
                         current.basis == PauliBasis.X
