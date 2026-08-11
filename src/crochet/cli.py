@@ -12,11 +12,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import logging
 from argparse import ArgumentParser
 
 import stim
 
-from crochet.utilities import partition_qubits
+from crochet.core.plaquette import Plaquette
+from crochet.drawing.drawer import Drawer
+from crochet.utilities import get_bounding_box, partition_qubits
 
 parser = ArgumentParser(
     prog="crochet",
@@ -24,15 +27,17 @@ parser = ArgumentParser(
 )
 parser.add_argument("filepath", help="path to a *.stim file")
 
+logging.basicConfig(level=logging.INFO)
+
 
 def main():
     args = parser.parse_args()
 
     circuit = stim.Circuit.from_file(args.filepath)
-    dqubits, aqubits = partition_qubits(circuit)
+    datas, ancillas = partition_qubits(circuit)
 
     print(f"Loaded circuit : {args.filepath}")
-    print(f"> Data qubits : {len(dqubits)}")
-    print(f"> Ancillaries : {len(aqubits)}")
+    print(f"> Data qubits : {len(datas)}, ancillas : {len(ancillas)}")
 
-    # print(f"> Rounds : {find_rounds(circuit)}")
+    all_rounds = Plaquette.decompose(circuit, datas, ancillas)
+    Drawer.draw(*get_bounding_box(circuit), all_rounds[0])
