@@ -15,27 +15,23 @@
 import itertools
 import logging
 from collections.abc import Collection
-from enum import Enum
 
 import stim
 
-from crochet.core.common import Moment, Qubit
+from crochet.core.common import Moment, PauliBasis, Qubit
 
 console = logging.getLogger(__name__)
 
 
-class StabilizerType(Enum):
-    U = 1
-    X = 2
-    Z = 3
-
-
 class Plaquette:
-    def __init__(self, start: int, location: list[float], size: int = 1):
+    def __init__(
+        self, start: int, basis: PauliBasis, location: list[float], size: int = 1
+    ):
         self.__start: Moment = start
         self.__location: list[float] = location
         self.__interactions: dict[tuple[float, float], Moment] = {}
-        self.__stabilizer_type = StabilizerType.U
+        self.__preparation = basis
+        self.__stabilizer_type = PauliBasis.U
         if size == 1:
             self.__corners = [(-0.5, -0.5), (+0.5, -0.5), (-0.5, +0.5), (+0.5, +0.5)]
         elif size == 2:
@@ -50,15 +46,19 @@ class Plaquette:
         return self.__location
 
     @property
+    def basis(self):
+        return self.__preparation
+
+    @property
     def interactions(self):
         return self.__interactions
 
     @property
-    def stabilizer_type(self) -> StabilizerType:
+    def stabilizer_type(self) -> PauliBasis:
         return self.__stabilizer_type
 
     def interact(
-        self, moment: int, qubit: int, position: list[float], stype: StabilizerType
+        self, moment: int, qubit: int, position: list[float], stype: PauliBasis
     ):
         qpx, qpy = self.__location
         qdx, qdy = position
@@ -69,7 +69,7 @@ class Plaquette:
                 f"Data qubit is accessed twice by Round {qubit} [{self.__location}]."
             )
 
-        if StabilizerType.U != self.__stabilizer_type != stype:
+        if PauliBasis.U != self.__stabilizer_type != stype:
             raise ValueError(
                 f"Plaquette is perform different types of controlled stabilizers [{self.__stabilizer_type}/{stype}]"
             )
@@ -97,11 +97,18 @@ class Plaquette:
         ticks = 0
         inter_ancilla_interaction_detected = False
         for instruction in circuit.flattened():
-            if instruction.name in ["R", "RX", "MR", "MRX"]:
+            if instruction.name.startswith("R") or instruction.name.startswith("MR"):
+                basis = (
+                    PauliBasis.Z
+                    if instruction.name in ["R", "MR"]
+                    else PauliBasis[instruction.name[-1]]
+                )
                 for tgt in instruction.targets_copy():
                     if tgt.value in ancillas:
                         rounds_per_ancilla[tgt.value][ticks] = Plaquette(
-                            ticks, qubit_coordinates[tgt.value]
+                            start=ticks,
+                            basis=basis,
+                            location=qubit_coordinates[tgt.value],
                         )
 
             if instruction.name in ["CX", "CZ"]:
@@ -118,19 +125,37 @@ class Plaquette:
                             inter_ancilla_interaction_detected = True
                         continue
 
-                    ctrl, trgt = (
-                        (fst.value, snd.value)
-                        if fst.value in ancillas
-                        else (snd.value, fst.value)
-                    )
+                    ctrl, trgt = fst.value, snd.value
+                    ancilla, data = (ctrl, trgt) if ctrl in ancillas else (trgt, ctrl)
 
-                    start = max(rounds_per_ancilla[ctrl])
-                    current: Plaquette = rounds_per_ancilla[ctrl][start]
+                    start = max(rounds_per_ancilla[ancilla])
+                    current: Plaquette = rounds_per_ancilla[ancilla][start]
+
+                    if (
+                        current.basis == PauliBasis.X
+                        and ctrl == ancilla
+                        and trgt == data
+                    ):
+                        stabilizer_type = PauliBasis[instruction.name[1]]
+                    elif (
+                        current.basis == PauliBasis.Z
+                        and ctrl == data
+                        and trgt == ancilla
+                        and instruction.name[1] == "X"
+                    ):
+                        stabilizer_type = PauliBasis.Z
+                    else:
+                        stabilizer_type = PauliBasis.U
+                    # TODO: handle extended stabilizers differently to be able to detect erroneous stabilizers.
+                    # explanation = "A stabilizer can use CX(a,d) or CZ(a,d) in the X-basis and CX(d,a) in the Z-basis."
+                    # extra = f"basis:{current.basis}, gate:{instruction.name}, qubits:{ctrl}@{qubit_coordinates[ctrl]},{trgt}@{qubit_coordinates[trgt]}"
+                    # raise ValueError(f"Erroneous layout detected. {explanation} [{extra}]")
+
                     current.interact(
-                        ticks,
-                        trgt,
-                        qubit_coordinates[trgt],
-                        StabilizerType[instruction.name[1]],
+                        moment=ticks,
+                        qubit=data,
+                        position=qubit_coordinates[data],
+                        stype=stabilizer_type,
                     )
 
             if instruction.name == "TICK":

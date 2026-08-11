@@ -12,15 +12,22 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from typing import ClassVar
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from crochet.core.common import Qubit
-from crochet.core.plaquette import Plaquette, StabilizerType
+from crochet.core.common import PauliBasis, Qubit
+from crochet.core.plaquette import Plaquette
 
 
 class Drawer:
     __UNIT = 64
+    __COLORS: ClassVar[dict[PauliBasis, str]] = {
+        PauliBasis.U: "lightgray",
+        PauliBasis.X: "#CF4040",
+        PauliBasis.Y: "#40CF40",
+        PauliBasis.Z: "#4040CF",
+    }
 
     @staticmethod
     def __make_shape(position):
@@ -55,14 +62,9 @@ class Drawer:
             if len(plaquette.interactions) == 0:
                 continue
 
-            color = (
-                "#CF4040"
-                if plaquette.stabilizer_type == StabilizerType.X
-                else "#4040CF"
-            )
             drawer.polygon(
                 Drawer.__make_shape(plaquette.location),
-                fill=color,
+                fill=Drawer.__COLORS[plaquette.stabilizer_type],
                 outline="black",
                 width=3,
             )

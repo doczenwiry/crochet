@@ -37,7 +37,7 @@ def main():
     datas, ancillas = partition_qubits(circuit)
 
     print(f"Loaded circuit : {args.filepath}")
-    print(f"> Data qubits : {len(datas)}, ancillas : {len(ancillas)}")
+    print(f"> Qubits : datas [{len(datas)}], ancillas [{len(ancillas)}]")
 
     all_rounds = Plaquette.decompose(circuit, datas, ancillas)
     Drawer.draw(*get_bounding_box(circuit), all_rounds[0])

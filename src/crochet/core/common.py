@@ -12,5 +12,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from enum import Enum
+
 type Moment = int
 type Qubit = int
+
+
+class PauliBasis(Enum):
+    U = 0
+    X = 1
+    Y = 2
+    Z = 3
