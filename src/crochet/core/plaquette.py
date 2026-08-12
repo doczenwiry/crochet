@@ -19,6 +19,7 @@ from collections.abc import Collection
 import stim
 
 from crochet.core.common import Moment, PauliBasis, Qubit
+from crochet.utils.geometry import Geometry
 
 console = logging.getLogger(__name__)
 
@@ -79,8 +80,9 @@ class Plaquette:
     @property
     def schedule(self) -> tuple[int, ...]:
         schedule = []
-        for c in [(-0.5, -0.5), (+0.5, -0.5), (-0.5, +0.5), (+0.5, +0.5)]:
-            schedule.append(self.__interactions.get(c, -1))
+        points = sorted((Geometry.theta(*p), p) for p in self.__interactions)
+        for _, p in points:
+            schedule.append(self.__interactions.get(p, -1))
         return tuple(schedule)
 
     @staticmethod
@@ -203,8 +205,12 @@ class Plaquette:
             )
 
     def __hash__(self):
-        information = (self.stabilizer_type, hash(self.__repr__()))
-        return hash(information)
+        return hash(
+            (
+                self.stabilizer_type,
+                frozenset((k, v) for k, v in self.__interactions.items()),
+            )
+        )
 
     def __str__(self):
         return self.__repr__()

@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import math
 from collections import Counter, defaultdict
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -20,29 +19,12 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from crochet.core.common import Qubit
 from crochet.core.plaquette import Plaquette
 from crochet.drawing.palette import Palette
+from crochet.utils.geometry import Geometry
 
 
 class Drawer:
     __UNIT = 64
     __RADIUS = 0.3125
-
-    # Thanks, Claude.AI (August 2026)
-    @staticmethod
-    def __theta(dx: float, dy: float) -> float:
-        adx, ady = abs(dx), abs(dy)
-
-        angle: float
-        if adx > ady:
-            angle = (ady / adx) * math.pi / 4.0
-        else:
-            angle = (math.pi / 2.0) - (adx / ady) * (math.pi / 4.0)
-
-        if dx < 0:
-            angle = math.pi - angle
-        if dy < 0:
-            angle = 2.0 * math.pi - angle
-
-        return angle
 
     @staticmethod
     def __make_shape(plaquette: Plaquette):
@@ -50,7 +32,7 @@ class Drawer:
         return [
             ((x + dx) * Drawer.__UNIT, (y + dy) * Drawer.__UNIT)
             for _, dx, dy in sorted(
-                (Drawer.__theta(dx, dy), dx, dy) for dx, dy in plaquette.corners
+                (Geometry.theta(dx, dy), dx, dy) for dx, dy in plaquette.corners
             )
         ]
 
@@ -135,55 +117,59 @@ class Drawer:
                     font=font,
                 )
 
-            pschedule = plaquette.schedule
+            interactions_p = plaquette.interactions
 
             plaquette_r = stabilizers.get(
                 qubit_at_location.get((px + 1.0, py), -1), None
             )
             if plaquette_r:
-                rschedule = plaquette_r.schedule
+                interactions_r = plaquette_r.interactions
 
-                if (
-                    pschedule[1] == -1
-                    or pschedule[3] == -1
-                    or rschedule[0] == -1
-                    or rschedule[2] == -1
-                ):
-                    continue
-
-                if (pschedule[1] < rschedule[0]) ^ (pschedule[3] < rschedule[2]):
-                    label_position = ((px + 0.5) * Drawer.__UNIT, py * Drawer.__UNIT)
-                    drawer.text(
-                        label_position,
-                        text="X",
-                        fill="yellow",
-                        anchor="mm",
-                        font=font,
-                    )
+                intersection = list(
+                    set(interactions_p.keys()).intersection(interactions_r.keys())
+                )
+                if len(intersection) == 2:
+                    q0, q1 = intersection
+                    if (interactions_p[q0] < interactions_r[q0]) ^ (
+                        interactions_p[q1] < interactions_r[q1]
+                    ):
+                        label_position = (
+                            (px + 0.5) * Drawer.__UNIT,
+                            py * Drawer.__UNIT,
+                        )
+                        drawer.text(
+                            label_position,
+                            text="X",
+                            fill="yellow",
+                            anchor="mm",
+                            font=font,
+                        )
 
             plaquette_b = stabilizers.get(
                 qubit_at_location.get((px, py + 1.0), -1), None
             )
             if plaquette_b:
-                bschedule = plaquette_b.schedule
+                interactions_b = plaquette_b.interactions
 
-                if (
-                    pschedule[2] == -1
-                    or pschedule[3] == -1
-                    or bschedule[0] == -1
-                    or bschedule[1] == -1
-                ):
-                    continue
-
-                if (pschedule[2] < bschedule[0]) ^ (pschedule[3] < bschedule[1]):
-                    label_position = (px * Drawer.__UNIT, (py + 0.5) * Drawer.__UNIT)
-                    drawer.text(
-                        label_position,
-                        text="X",
-                        fill="yellow",
-                        anchor="mm",
-                        font=font,
-                    )
+                intersection = list(
+                    set(interactions_p.keys()).intersection(interactions_b.keys())
+                )
+                if len(intersection) == 2:
+                    q0, q1 = intersection
+                    if (interactions_p[q0] < interactions_b[q0]) ^ (
+                        interactions_p[q1] < interactions_b[q1]
+                    ):
+                        label_position = (
+                            px * Drawer.__UNIT,
+                            (py + 0.5) * Drawer.__UNIT,
+                        )
+                        drawer.text(
+                            label_position,
+                            text="X",
+                            fill="yellow",
+                            anchor="mm",
+                            font=font,
+                        )
 
         image = ImageOps.expand(image, border=Drawer.__UNIT, fill="gray")
 

@@ -11,6 +11,8 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+import logging
 from enum import Enum
 
 from PIL import ImageColor
@@ -24,6 +26,8 @@ ZX_PALETTE = {
     PauliBasis.Y: "#40CF40",
     PauliBasis.Z: "#4040CF",
 }
+
+console = logging.getLogger(__name__)
 
 
 class Palette(Enum):
@@ -51,10 +55,9 @@ class PaletteSchedules:
         self.__palette = {}
         collected = set()
         for s in stabilizers.values():
-            print(f"Stabilizer {s.stabilizer_type}/{s.schedule} : {hash(s)}")
             collected.add(s)
         n = len(collected)
-        print(f"Collected {n} plaquette types.")
+        console.info(f"Collected {n} plaquette types.")
 
         saturation = 80
         value = 90

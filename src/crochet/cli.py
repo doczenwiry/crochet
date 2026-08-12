@@ -70,3 +70,7 @@ def main():
         style=Palette[args.palette.upper()],
         fontsize=args.fontsize,
     )
+
+
+if __name__ == "__main__":
+    main()
