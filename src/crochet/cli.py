@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 import logging
+import os.path
 from argparse import ArgumentParser
 
 import stim
@@ -42,6 +43,12 @@ parser.add_argument(
     default="zx",
     help="choose whether to color plaquettes by their stabilizer types or take their schedule into account",
 )
+parser.add_argument(
+    "-s",
+    "--savefile",
+    action="store_true",
+    help="toggle whether to save the PNG files that were generated for all the rounds",
+)
 parser.add_argument("filepath", help="path to a *.stim file")
 
 logging.basicConfig(level=logging.INFO)
@@ -63,13 +70,17 @@ def main():
         for qubit, (qx, qy) in circuit.get_final_qubit_coordinates().items()
     }
 
-    Drawer.draw(
-        *get_bounding_box(circuit),
-        all_rounds[0],
-        qubit_at_location,
-        style=Palette[args.palette.upper()],
-        fontsize=args.fontsize,
-    )
+    basename, _ = os.path.splitext(args.filepath) if args.savefile else (None, None)
+
+    for r, round in enumerate(all_rounds):
+        Drawer.draw(
+            *get_bounding_box(circuit),
+            round,
+            qubit_at_location,
+            style=Palette[args.palette.upper()],
+            fontsize=args.fontsize,
+            savefile=f"{basename}-r{r}.png" if basename else None,
+        )
 
 
 if __name__ == "__main__":
