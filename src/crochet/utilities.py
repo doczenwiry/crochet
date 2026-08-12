@@ -14,6 +14,7 @@
 
 from collections import Counter
 from collections.abc import Collection
+from math import ceil
 
 import stim
 
@@ -30,7 +31,7 @@ def get_bounding_box(circuit: stim.Circuit) -> tuple[int, int]:
         min(coordinates, key=lambda pos: pos[1])[1],
         max(coordinates, key=lambda pos: pos[1])[1],
     )
-    return round(max_x - min_x) + 1, round(max_y - min_y) + 1
+    return ceil(max_x - min_x), ceil(max_y - min_y)
 
 
 def partition_qubits(

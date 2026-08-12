@@ -11,26 +11,20 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
 import math
 from collections import Counter, defaultdict
-from typing import ClassVar
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from crochet.core.common import PauliBasis, Qubit
+from crochet.core.common import Qubit
 from crochet.core.plaquette import Plaquette
+from crochet.drawing.palette import Palette
 
 
 class Drawer:
-    __FONT = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", size=16, index=1)
     __UNIT = 64
     __RADIUS = 0.3125
-    __COLORS: ClassVar[dict[PauliBasis, str]] = {
-        PauliBasis.U: "lightgray",
-        PauliBasis.X: "#CF4040",
-        PauliBasis.Y: "#40CF40",
-        PauliBasis.Z: "#4040CF",
-    }
 
     # Thanks, Claude.AI (August 2026)
     @staticmethod
@@ -84,10 +78,17 @@ class Drawer:
         cols: int,
         stabilizers: dict[Qubit, Plaquette],
         qubit_at_location: dict[tuple[float, float], Qubit],
+        fontsize: int,
+        style: Palette,
         savefile: str | None = None,
     ):
+        font = ImageFont.truetype(
+            "/System/Library/Fonts/Menlo.ttc", size=fontsize, index=1
+        )
         image = Image.new("RGB", (cols * Drawer.__UNIT, rows * Drawer.__UNIT), "gray")
         drawer = ImageDraw.Draw(image)
+
+        palette = Palette.make(stabilizers, style=style)
 
         earliest = min(stabilizers.values(), key=lambda plq: plq.start)
 
@@ -96,11 +97,10 @@ class Drawer:
             if len(plaquette.interactions) < 2:
                 continue
 
-            color = Drawer.__COLORS[plaquette.stabilizer_type]
+            color = palette.get_color(plaquette)
 
             if len(plaquette.interactions) == 2:
-                points, start, final = Drawer.__make_chord(plaquette)
-                drawer.chord(xy=points, start=start, end=final, fill=color)
+                drawer.chord(*Drawer.__make_chord(plaquette), fill=color)
             else:  # len(plaquette.interactions) >= 3
                 drawer.polygon(Drawer.__make_shape(plaquette), fill=color)
 
@@ -132,7 +132,7 @@ class Drawer:
                     text=str(moment - earliest.start),
                     fill="black",
                     anchor="mm",
-                    font=Drawer.__FONT,
+                    font=font,
                 )
 
             pschedule = plaquette.schedule
@@ -158,7 +158,7 @@ class Drawer:
                         text="X",
                         fill="yellow",
                         anchor="mm",
-                        font=Drawer.__FONT,
+                        font=font,
                     )
 
             plaquette_b = stabilizers.get(
@@ -182,7 +182,7 @@ class Drawer:
                         text="X",
                         fill="yellow",
                         anchor="mm",
-                        font=Drawer.__FONT,
+                        font=font,
                     )
 
         image = ImageOps.expand(image, border=Drawer.__UNIT, fill="gray")

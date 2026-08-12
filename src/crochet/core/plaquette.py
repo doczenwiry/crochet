@@ -193,6 +193,19 @@ class Plaquette:
 
         return plaquettes
 
+    def __eq__(self, other):
+        if not isinstance(other, Plaquette):
+            return False
+        else:
+            return (
+                self.stabilizer_type == other.stabilizer_type
+                and self.schedule == other.schedule
+            )
+
+    def __hash__(self):
+        information = (self.stabilizer_type, hash(self.__repr__()))
+        return hash(information)
+
     def __str__(self):
         return self.__repr__()
 
