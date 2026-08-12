@@ -14,6 +14,7 @@
 
 import itertools
 import logging
+from collections import defaultdict
 from collections.abc import Collection
 
 import stim
@@ -176,21 +177,24 @@ class Plaquette:
             if instruction.name == "TICK":
                 ticks += 1
 
-        number_of_rounds = len(next(iter(rounds_per_ancilla.values())))
-        if any(
-            len(rounds) != number_of_rounds for rounds in rounds_per_ancilla.values()
-        ):
-            raise NotImplementedError(
-                "Unable to work with a QEC circuit containing different number of rounds per stabilizers."
+        round_counts = defaultdict(list)
+        for ancilla, rounds in rounds_per_ancilla.items():
+            round_counts[len(rounds)].append(ancilla)
+        max_number_of_rounds = max(round_counts, key=lambda k: len(round_counts[k]))
+
+        if len(round_counts) != 1:
+            console.warning(
+                "Different number of rounds per stabilizer detected. Keeping majority of stabilizers with the same number of rounds."
             )
 
         plaquettes = []
-        for round in range(number_of_rounds):
+        for round in range(max_number_of_rounds):
             layer = {}
             for ancilla, rounds in rounds_per_ancilla.items():
-                layer[ancilla] = rounds[
-                    next(itertools.islice(rounds.keys(), round, None))
-                ]
+                if len(rounds) == max_number_of_rounds:
+                    layer[ancilla] = rounds[
+                        next(itertools.islice(rounds.keys(), round, None))
+                    ]
             plaquettes.append(layer)
 
         return plaquettes
