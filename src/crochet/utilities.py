@@ -36,7 +36,7 @@ def get_bounding_box(circuit: stim.Circuit) -> tuple[int, int]:
 
 def partition_qubits(
     circuit: stim.Circuit,
-) -> tuple[Collection[Qubit], Collection[Qubit]]:
+) -> tuple[Collection[Qubit], Collection[Qubit], Counter[Qubit]]:
     all_qubits = set()
     resets: Counter[int] = Counter()
 
@@ -50,4 +50,4 @@ def partition_qubits(
     datas = set(filter(lambda q: resets[q] == 1, resets.keys()))
     ancillas = set(filter(lambda q: resets[q] > 1, resets.keys()))
 
-    return datas, ancillas
+    return datas, ancillas, resets

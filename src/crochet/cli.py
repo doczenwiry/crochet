@@ -14,6 +14,7 @@
 
 import logging
 import os.path
+import sys
 from argparse import ArgumentParser
 
 import stim
@@ -71,10 +72,18 @@ def main():
     args = parser.parse_args()
 
     circuit = stim.Circuit.from_file(args.filepath)
-    datas, ancillas = partition_qubits(circuit)
+    datas, ancillas, rounds = partition_qubits(circuit)
 
     print(f"Loaded circuit : {args.filepath}")
     print(f"> Qubits : datas [{len(datas)}], ancillas [{len(ancillas)}]")
+    max_number_of_rounds = max(count for _, count in rounds.items())
+    print(f"> Number of rounds : {max_number_of_rounds}")
+
+    if len(ancillas) == 0:
+        print(
+            "> ERROR: Couldn't detect the ancillas by R/M pattern. Either the circuit has no QEC or contains only a single round."
+        )
+        sys.exit(-1)
 
     all_rounds = Plaquette.decompose(circuit, datas, ancillas)
 
