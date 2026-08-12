@@ -43,6 +43,19 @@ parser.add_argument(
     default="zx",
     help="choose whether to color plaquettes by their stabilizer types or take their schedule into account",
 )
+
+
+def int_list(value):
+    return [int(x) for x in value.split(",")]
+
+
+parser.add_argument(
+    "-r",
+    "--rounds",
+    action="store",
+    type=int_list,
+    help="select which rounds should be visualized.",
+)
 parser.add_argument(
     "-s",
     "--savefile",
@@ -73,6 +86,9 @@ def main():
     basename, _ = os.path.splitext(args.filepath) if args.savefile else (None, None)
 
     for r, round in enumerate(all_rounds):
+        if args.rounds and r not in args.rounds:
+            continue
+
         Drawer.draw(
             *get_bounding_box(circuit),
             round,
